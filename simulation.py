@@ -232,6 +232,14 @@ def main():
     ]
 
     pr_y = [0.2, 0.3, 0.4, 0.1]
+
+    correct_params = {
+        "n_classes": len(pr_y),
+        "pr_y": pr_y,
+        "mu_x": mu_x,
+        "vcov_x": vcov_x,
+    }
+
     df_train = simulate(
         n_obs=500, pr_y=pr_y, mu_x=mu_x, vcov_x=vcov_x, pr_y_is_observed=0.05,
     )
@@ -268,10 +276,13 @@ def main():
     # as long as observed_y is NaN (note pr_y_is_observed=0.0 above)
     predictions_gmm = calculate_pr_y_given_x(df_test, params_hat)
 
+    predictions_optimal = calculate_pr_y_given_x(df_test, correct_params)
+
     predictions_rf_true_y = rf_true_y.predict_proba(df_test[["x1", "x2"]])
     predictions_rf_observed_y = rf_observed_y.predict_proba(df_test[["x1", "x2"]])
 
     test_loss_gmm = log_loss(df_test["true_y"], y_pred=predictions_gmm)
+    test_loss_optimal = log_loss(df_test["true_y"], y_pred=predictions_optimal)
     test_loss_rf_true_y = log_loss(df_test["true_y"], y_pred=predictions_rf_true_y)
     test_loss_rf_observed_y = log_loss(
         df_test["true_y"], y_pred=predictions_rf_observed_y
@@ -279,6 +290,7 @@ def main():
 
     # TODO Replicate with different df_train to get sampling distribution of test_loss_* vars
     print("Test set log losses (lower is better):")
+    print(f"test_loss_optimal = {test_loss_optimal}")
     print(f"test_loss_gmm = {test_loss_gmm}")
     print(f"test_loss_rf_true_y = {test_loss_rf_true_y}")
     print(f"test_loss_rf_observed_y = {test_loss_rf_observed_y}")
