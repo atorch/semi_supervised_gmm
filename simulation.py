@@ -252,6 +252,7 @@ def main():
 
     save_plots(df_train, params_hat, mu_x)
 
+    # TODO Also try fitting a multiclass logit
     # Fit a random forest that gets to observe _all_ Ys (i.e. true_y instead of observed_y)
     rf_true_y = RandomForestClassifier(n_estimators=200, max_features="sqrt")
     rf_true_y.fit(df_train[["x1", "x2"]], df_train["true_y"])
@@ -294,6 +295,29 @@ def main():
     print(f"test_loss_gmm = {test_loss_gmm}")
     print(f"test_loss_rf_true_y = {test_loss_rf_true_y}")
     print(f"test_loss_rf_observed_y = {test_loss_rf_observed_y}")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    fig.tight_layout(pad=10)
+    plt.plot(
+        [
+            test_loss_optimal,
+            test_loss_gmm,
+            test_loss_rf_true_y,
+            test_loss_rf_observed_y,
+        ],
+        [
+            "GMM with\ncorrect parameters",
+            "GMM with\nestimated parameters",
+            "Random Forest\ntrained on true Y",
+            "Random Forest\ntrained on observed Y",
+        ],
+        "kx",
+        markersize=9,
+    )
+    plt.xlabel("test set log loss (lower is better)")
+    plt.ylabel("")
+    plt.savefig("test_set_log_losses.png")
+    plt.clf()
 
 
 if __name__ == "__main__":

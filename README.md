@@ -11,8 +11,8 @@ Related:
 This code simulates data from a Gaussian mixture model or GMM
 and then estimates parameters using predictors `X1, X2` that are fully observed and
 and class labels `Y` that are partially observed.
-Unobserved Ys are encoded as NaNs.
-(In the "classic" GMM setting, `Y` is entirely unobserved, and the model is fit using only the `X`s.)
+Unobserved `Y` are encoded as NaNs.
+(In the "classic" GMM setting, `Y` is entirely unobserved, and the model is fit using only `X`.)
 
 The estimated model is used to predict Pr[ Y | X ] on a test set.
 
@@ -21,3 +21,5 @@ The estimated model is used to predict Pr[ Y | X ] on a test set.
 ![Observed Y](plot_simulation_x_and_observed_y.png)
 
 ![Mean of X given Y](plot_mu_x_true_and_estimated.png)
+
+![Test set log loss](test_set_log_losses.png)
