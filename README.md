@@ -9,10 +9,10 @@ Related:
 [simulation.py](simulation.py)
 
 This code simulates data from a Gaussian mixture model or GMM
-and then estimates parameters using predictors (X) that are fully observed and
-and class labels (Y) that are partially observed.
+and then estimates parameters using predictors `X1, X2` that are fully observed and
+and class labels `Y` that are partially observed.
 Unobserved Ys are encoded as NaNs.
-(In the "classic" GMM setting, Y is entirely unobserved.)
+(In the "classic" GMM setting, `Y` is entirely unobserved, and the model is fit using only the `X`s.)
 
 The estimated model is used to predict Pr[ Y | X ] on a test set.
 
