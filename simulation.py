@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.stats import multivariate_normal
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss
 
 
@@ -76,9 +77,18 @@ def run_expectation_maximization(df, n_classes, max_iter=20):
     # Try multiple random starting values, return best likelihood
     # Note that [0, 0] and n=2 both hardcode the dimension of the predictors ["x1", "x2"]
     params_hat = {
-        "pr_y": [1 / n_classes,] * n_classes,
-        "mu_x": [[0, 0],] * n_classes,
-        "vcov_x": [np.identity(n=2),] * n_classes,
+        "pr_y": [
+            1 / n_classes,
+        ]
+        * n_classes,
+        "mu_x": [
+            [0, 0],
+        ]
+        * n_classes,
+        "vcov_x": [
+            np.identity(n=2),
+        ]
+        * n_classes,
         "n_classes": n_classes,
     }
 
@@ -113,7 +123,11 @@ def simulate_x(df, mu_x, vcov_x, n_classes):
 
 
 def simulate(
-    n_obs, pr_y, mu_x, vcov_x, pr_y_is_observed,
+    n_obs,
+    pr_y,
+    mu_x,
+    vcov_x,
+    pr_y_is_observed,
 ):
 
     n_classes = len(pr_y)
@@ -225,10 +239,22 @@ def main():
     # Entry i is the variance-covariance matrix of X conditional on Y==i
     # Make sure these are positive (semi-) definite
     vcov_x = [
-        [[2.0, -0.3], [-0.3, 1.0],],
-        [[2, 0], [0, 3],],
-        [[2, 1], [1, 4],],
-        [[3.0, 1.5], [1.5, 2.0],],
+        [
+            [2.0, -0.3],
+            [-0.3, 1.0],
+        ],
+        [
+            [2, 0],
+            [0, 3],
+        ],
+        [
+            [2, 1],
+            [1, 4],
+        ],
+        [
+            [3.0, 1.5],
+            [1.5, 2.0],
+        ],
     ]
 
     pr_y = [0.2, 0.3, 0.4, 0.1]
@@ -241,7 +267,11 @@ def main():
     }
 
     df_train = simulate(
-        n_obs=500, pr_y=pr_y, mu_x=mu_x, vcov_x=vcov_x, pr_y_is_observed=0.05,
+        n_obs=500,
+        pr_y=pr_y,
+        mu_x=mu_x,
+        vcov_x=vcov_x,
+        pr_y_is_observed=0.05,
     )
 
     # EM is not allowed to use true_y
@@ -252,12 +282,23 @@ def main():
 
     save_plots(df_train, params_hat, mu_x)
 
-    # TODO Also try fitting a multiclass logit
+    # Fit a multiclass/multinomial logit that gets to observe _all_ Ys (i.e. true_y instead of observed_y)
+    lr_true_y = LogisticRegression(multi_class="multinomial", C=0.5, penalty="l2")
+    lr_true_y.fit(df_train[["x1", "x2"]], df_train["true_y"])
+
+    # Fit a multinomial logic that gets to observe only observed_y (doesn't make any use of the unlabeled Xs)
+    lr_observed_y = LogisticRegression(multi_class="multinomial", C=0.5, penalty="l2")
+    y_is_observed = df_train["observed_y"].notnull()
+    lr_observed_y.fit(
+        df_train.loc[y_is_observed, ["x1", "x2"]],
+        df_train.loc[y_is_observed, "observed_y"],
+    )
+
     # Fit a random forest that gets to observe _all_ Ys (i.e. true_y instead of observed_y)
     rf_true_y = RandomForestClassifier(n_estimators=200, max_features="sqrt")
     rf_true_y.fit(df_train[["x1", "x2"]], df_train["true_y"])
 
-    # Fit a random forest that gets to observe only observed_y (but doesn't make any use of the unlabeled Xs)
+    # Fit a random forest that gets to observe only observed_y (doesn't make any use of the unlabeled Xs)
     rf_observed_y = RandomForestClassifier(n_estimators=200, max_features="sqrt")
     y_is_observed = df_train["observed_y"].notnull()
     rf_observed_y.fit(
@@ -270,7 +311,11 @@ def main():
     # (b) a random forest that gets to "cheat" and train on df_train[["x1", "x2", "true_y"]]
     # (c) a random forest trained on the subset of df_train[["x1", "x2", "observed_y"]] where observed_y is truly observed (i.e. not null)
     df_test = simulate(
-        n_obs=1000, pr_y=pr_y, mu_x=mu_x, vcov_x=vcov_x, pr_y_is_observed=0.0,
+        n_obs=1000,
+        pr_y=pr_y,
+        mu_x=mu_x,
+        vcov_x=vcov_x,
+        pr_y_is_observed=0.0,
     )
 
     # This function uses the estimated GMM to predict Y | X
@@ -279,11 +324,20 @@ def main():
 
     predictions_optimal = calculate_pr_y_given_x(df_test, correct_params)
 
+    predictions_lr_true_y = lr_true_y.predict_proba(df_test[["x1", "x2"]])
+    predictions_lr_observed_y = lr_observed_y.predict_proba(df_test[["x1", "x2"]])
+
     predictions_rf_true_y = rf_true_y.predict_proba(df_test[["x1", "x2"]])
     predictions_rf_observed_y = rf_observed_y.predict_proba(df_test[["x1", "x2"]])
 
     test_loss_gmm = log_loss(df_test["true_y"], y_pred=predictions_gmm)
     test_loss_optimal = log_loss(df_test["true_y"], y_pred=predictions_optimal)
+
+    test_loss_lr_true_y = log_loss(df_test["true_y"], y_pred=predictions_lr_true_y)
+    test_loss_lr_observed_y = log_loss(
+        df_test["true_y"], y_pred=predictions_lr_observed_y
+    )
+
     test_loss_rf_true_y = log_loss(df_test["true_y"], y_pred=predictions_rf_true_y)
     test_loss_rf_observed_y = log_loss(
         df_test["true_y"], y_pred=predictions_rf_observed_y
@@ -302,12 +356,16 @@ def main():
         [
             test_loss_optimal,
             test_loss_gmm,
+            test_loss_lr_true_y,
+            test_loss_lr_observed_y,
             test_loss_rf_true_y,
             test_loss_rf_observed_y,
         ],
         [
             "GMM with\ncorrect parameters",
             "GMM with\nestimated parameters",
+            "Logistic Regression\ntrained on true Y",
+            "Logistic Regression\ntrained on observed Y",
             "Random Forest\ntrained on true Y",
             "Random Forest\ntrained on observed Y",
         ],
